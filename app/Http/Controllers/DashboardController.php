@@ -3,39 +3,30 @@
 namespace App\Http\Controllers;
 
 use App\news_TopStories;
+use App\news_TopStoriesDetails;
 
 class DashboardController extends Controller
 {
     public function showTopStories()
     {
-        $newStoriesJson = file_get_contents('https://hacker-news.firebaseio.com/v0/topstories.json?print=pretty');
-        if (isset($newStoriesJson) && $newStoriesJson) {
-            $newestStories = json_decode($newStoriesJson);
-
-            foreach ($newestStories as $newestStory) {
-                $newestStoriesDB = new news_TopStories();
-                $newestStoriesDB->StoryID = $newestStory;
-                $newestStoriesDB->DateUpdated = date('Y-m-d H:i:s', time());
-                $newestStoriesDB->save();
+        $topStoriesID = json_decode(file_get_contents('https://hacker-news.firebaseio.com/v0/topstories.json?print=pretty'));
+        foreach ($topStoriesID as $topStoryID) {
+            $topStoryDetails = json_decode(file_get_contents('https://hacker-news.firebaseio.com/v0/item/' . $topStoryID . '.json?print=pretty'));
+            $isAsk = isset($topStoryDetails->url) ? 'no' : 'yes';
+            $validateStory = news_TopStoriesDetails::where('StoryID', '=', $topStoryDetails->id)->first() ? 'yes' : 'no';
+            if ($isAsk == 'no' && $validateStory == 'no') {
+                $topStory = new news_TopStoriesDetails();
+                $topStory->StoryID = $topStoryDetails->id;
+                $topStory->Score = $topStoryDetails->score;
+                $topStory->Title = $topStoryDetails->title;
+                $topStory->Url = $topStoryDetails->url;
+                $topStory->DateUpdated = date('Y-m-d H:i:s', $topStoryDetails->time);
+                $topStory->save();
             }
-
-            $topStoriesID = \DB::table('news_TopStories')->get();
-
-            foreach ($topStoriesID as $topStory) {
-                $topStoryID = $topStory->StoryID;
-                $topStoryDetailsJson = file_get_contents('https://hacker-news.firebaseio.com/v0/item/'.$topStoryID.'.json?print=pretty');
-                $topStoryDetails = json_decode($topStoryDetailsJson);
-
-                dd($topStoryDetails);
-            }
-
-
-        } else {
-            return 'File not found';
         }
-
 
         $data = [];
         return \View('dashboard', $data);
     }
+
 }
