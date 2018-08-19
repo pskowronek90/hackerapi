@@ -9,7 +9,7 @@ class DashboardController extends Controller
 {
     public function displayTopStories()
     {
-        $topStories = news_TopStoriesDetails::all();
+        $topStories = \DB::table('news_TopStoriesDetails')->simplePaginate(50);
         $data = ['topStories' => $topStories];
         return \View('top', $data);
     }
