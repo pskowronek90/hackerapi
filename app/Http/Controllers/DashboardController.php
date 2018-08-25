@@ -26,11 +26,9 @@ class DashboardController extends Controller
             if ($has_cache) return $cached;
         }
 
-        // check $site for valid URL - catch pdf, amp etc. ?
-        try {
-            $site = filter_var($site, FILTER_VALIDATE_URL) === FALSE;
-        } catch (\Exception $exception) {
-            return sprintf('invalid URL: %s', $site);
+        // check $site for valid URL
+        if (filter_var($site, FILTER_VALIDATE_URL) === FALSE) {
+            throw new \Exception (sprintf('invalid URL: %s', $site));
         }
 
         // get pagespeed API response for the URL
