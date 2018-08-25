@@ -2,9 +2,6 @@
 
 namespace App\Http\Controllers;
 
-use App\news_TopStories;
-use App\news_TopStoriesDetails;
-
 class DashboardController extends Controller
 {
     public function displayTopStories()
@@ -14,22 +11,40 @@ class DashboardController extends Controller
         return \View('top', $data);
     }
 
-    public function getThumbnail($url, $options = array()) {
-        $embed_key = ''; # replace it with you Embed API key
-        $secret = ''; # replace it with your Secret
+    public function getScreenshot($site, $img_tag_attributes = "border='1'")
+    {
 
-        $query = 'url=' . urlencode($url);
-
-        foreach($options as $key => $value) {
-            $query .= '&' . trim($key) . '=' . urlencode(trim($value));
-
+        if (empty(trim($site))) {
+            return NULL; // for empty $site, return nothing
         }
 
+        // check cache
+        $apc_is_loaded = extension_loaded('apc');
+        if ($apc_is_loaded) {
+            $has_cache = false;
+            $cached = apc_fetch("thumbnail:" . $site, $has_cache);
+            if ($has_cache) return $cached;
+        }
 
-        $token = md5($query . $secret);
+        // check $site for valid URL - catch pdf, amp etc. ?
+        try {
+            $site = filter_var($site, FILTER_VALIDATE_URL) === FALSE;
+        } catch (\Exception $exception) {
+            return sprintf('invalid URL: %s', $site);
+        }
 
+        // get pagespeed API response for the URL
+        $response = file_get_contents('https://www.googleapis.com/pagespeedonline/v1/runPagespeed?' . http_build_query([
+                'url' => (array_key_exists('path', parse_url($site))) ? dirname($site) : $site,
+                'screenshot' => 'true',
+            ]));
+        $image = json_decode($response, true);
+        $image = $image['screenshot']['data'];
+        if ($apc_is_loaded) apc_add("thumbnail:" . $site, $image, 2400);
 
-        return "https://api.thumbalizr.com/api/v1/embed/$embed_key/$token/?$query";
+        $image = str_replace(array('_', '-'), array('/', '+'), $image);
+        echo "<img src=\"data:image/jpeg;base64," . $image . "\" $img_tag_attributes" . "style='width='80, height='80'"
+    . "=/>";
     }
 
 
